@@ -17,6 +17,7 @@ export type LogFormatSettings = {
     mainProgram: boolean,
     subProgram: boolean,
     date: boolean,
+    ignoreLevels?: LogLevel[]
 
 }
 
@@ -26,3 +27,5 @@ export type LoggerSettings = {
     logWebook: LogWebhookSettings,
     show: LogFormatSettings
 }
+
+export type LogLevel = "FATAL"|"ERROR"|"WARN"|"SUCCESS"|"INFO"|"DEBUG"
