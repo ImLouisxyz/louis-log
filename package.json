@@ -1,0 +1,28 @@
+{
+    "name": "louis-log",
+    "version": "0.0.0",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "description": "",
+    "scripts": {
+        "run": "bun run src/index.ts",
+        "build": "bun run build.mjs",
+        "prepublishOnly": "bun run build"
+    },
+    "files": [
+        "dist"
+    ],
+    "keywords": [
+        "bun"
+    ],
+    "license": "MIT",
+    "author": "LouisW",
+    "devDependencies": {
+        "bun-plugin-dts": "^0.2.1",
+        "@types/bun": "^1.0.0",
+        "typescript": "^5.2.2"
+    },
+    "dependencies": {
+        "chalk": "^5.3.0"
+    }
+}
