@@ -17,7 +17,7 @@ const useLogger = mock((logMessage: string) => {
     // Restore original console.log
     console.log = originalLog;
 
-    logger.log(logMessage);
+    logger.log(stdout);
 
     return stdout;
 });
