@@ -18,7 +18,7 @@ export type LogFormatSettings = {
     mainProgram: boolean;
     subProgram: boolean;
     date: boolean;
-    dateformat: Intl.DateTimeFormatOptions;
+    dateformat: string;
     dateCountry: string;
     level: boolean;
     ignoreLevels: LogLevel[];

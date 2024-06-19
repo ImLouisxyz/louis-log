@@ -1,4 +1,5 @@
 import chalk from "chalk";
+import dateFormat from "dateformat";
 import * as Types from "./types.ts";
 
 const defaultSettings: Types.LoggerSettings = {
@@ -7,15 +8,7 @@ const defaultSettings: Types.LoggerSettings = {
         mainProgram: true,
         subProgram: true,
         date: true,
-        dateformat: {
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-            hour12: false, // 24-hour
-        },
+        dateformat: "yyyy-mm-dd HH:MM:ss:l Z",
         dateCountry: "en",
         level: true,
         ignoreLevels: ["DEBUG"],
@@ -90,11 +83,7 @@ export class Logger {
 
     private logToStdout(currentTime: Date, logMessage: string | number, logLevel: string, logDataString: string) {
         let outMessage = "";
-        outMessage += this.formatSettings.date
-            ? `[${new Intl.DateTimeFormat(this.formatSettings.dateCountry, this.formatSettings.dateformat).format(
-                  currentTime,
-              )}] `
-            : "";
+        outMessage += this.formatSettings.date ? `[${dateFormat(currentTime, this.formatSettings.dateformat)}] ` : "";
 
         outMessage += this.formatSettings.mainProgram || this.formatSettings.subProgram ? "<" : "";
 
@@ -110,12 +99,14 @@ export class Logger {
 
         outMessage += logMessage;
 
-        outMessage += logDataString;
+        outMessage += logDataString != "" ? "\nLog Data:\n" + logDataString : "";
 
         console.log(this.colours[logLevel](outMessage));
     }
 
-    private logToFile(currentTime: Date, logMessage: string | number, logLevel: string, logDataString: string) {}
+    private logToFile(currentTime: Date, logMessage: string | number, logLevel: string, logDataString: string) {
+        // TODO add filestorage
+    }
 
     private handleLogData(logData: any): string {
         if (logData == undefined) return "";
@@ -124,9 +115,18 @@ export class Logger {
 
         if (dataType == "string") return logData;
 
-        if (["bigint", "boolean", "number"].includes(dataType)) return logData.toString();
+        if (["bigint", "boolean", "number", "symbol", "function"].includes(dataType)) return logData.toString();
 
-        return dataType;
+        if (dataType == "object") {
+            try {
+                return JSON.stringify(logData, null, 4);
+            } catch (error) {
+                this.error("Datatype of object is not json");
+            }
+        }
+
+        this.error("Datatype Error", dataType);
+        return "Datatype error";
     }
 
     // Print methods
