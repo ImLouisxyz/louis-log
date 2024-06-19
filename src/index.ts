@@ -6,6 +6,15 @@ const defaultSettings: Types.LoggerSettings = {
         mainProgram: true,
         subProgram: true,
         date: true,
+        dateformat: {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: false, // 24-hour
+        },
         ignoreLevels: ["DEBUG"],
     },
     logStorage: {
@@ -14,6 +23,7 @@ const defaultSettings: Types.LoggerSettings = {
         txt: true,
         db: false,
         splitBy: "day",
+        stratagy: "single",
     },
     logWebook: {
         enable: false,
@@ -52,6 +62,8 @@ export class Logger {
         console.log(chalk.yellow("=========== Settings ==========="));
     }
     private sendLog(logLevel: string, logMessage: string | number, logData: any) {
+        const currentTime = new Date();
+
         // !Might need to add more types for logMessage
         let colours: { [key: string]: Function } = {
             FATAL: chalk.redBright,
@@ -62,8 +74,18 @@ export class Logger {
             DEBUG: chalk.magenta,
         };
 
-        // if (this.forma)
-        console.log(colours[logLevel](logMessage));
+        let outMessage = "";
+
+        if (this.formatSettings.date) {
+            outMessage += `[${new Intl.DateTimeFormat("", this.formatSettings.dateformat)}]`;
+        }
+
+        if (this.formatSettings.mainProgram) {
+        }
+
+        outMessage += logMessage;
+
+        console.log(colours[logLevel](outMessage));
     }
 
     // Print methods

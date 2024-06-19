@@ -4,6 +4,8 @@ export type LogStorageSettings = {
     txt: boolean;
     db: boolean;
     splitBy: "year" | "month" | "day" | "hour" | "minute" | "second";
+    stratagy: "single" | "batch";
+    batch?: number;
 };
 
 export type LogWebhookSettings = {
@@ -16,6 +18,7 @@ export type LogFormatSettings = {
     mainProgram: boolean;
     subProgram: boolean;
     date: boolean;
+    dateformat?: Intl.DateTimeFormatOptions;
     ignoreLevels?: LogLevel[];
 };
 
