@@ -11,7 +11,7 @@ const useLogger = mock((logMessage: string) => {
     };
 
     // Create a new Logger instance and log a message
-    const logger = new Logger(show.mainProgram=true);
+    const logger = new Logger({ show: { mainProgram: false } });
     logger.log(logMessage);
 
     // Restore original console.log
