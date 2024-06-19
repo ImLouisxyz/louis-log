@@ -2,7 +2,6 @@ export type LogStorageSettings = {
     path?: string;
     json: boolean;
     txt: boolean;
-    db: boolean;
     splitBy: "year" | "month" | "day" | "hour" | "minute" | "second";
     stratagy: "single" | "batch";
     batch?: number;
@@ -22,7 +21,7 @@ export type LogFormatSettings = {
     dateformat: Intl.DateTimeFormatOptions;
     dateCountry: string;
     level: boolean;
-    ignoreLevels?: LogLevel[];
+    ignoreLevels: LogLevel[];
 };
 
 export type LoggerSettings = {

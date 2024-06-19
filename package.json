@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "description": "",
+  "description": "An overcomplicated logging solution for large projects",
   "scripts": {
     "run": "bun run src/index.ts",
     "build": "bun run build.mjs",
@@ -16,13 +16,14 @@
     "bun"
   ],
   "license": "MIT",
-  "author": "LouisW",
+  "author": "Bilbo1Gaming (Louis)",
   "devDependencies": {
     "@types/bun": "^1.0.0",
     "bun-plugin-dts": "^0.2.1",
     "typescript": "^5.4.5"
   },
   "dependencies": {
-    "chalk": "^5.3.0"
+    "chalk": "^5.3.0",
+    "dateformat": "^5.0.3"
   }
 }

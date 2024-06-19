@@ -23,6 +23,7 @@ const useLogger = mock((logMessage: string) => {
 });
 
 describe("Log", () => {
+    useLogger("This log is so that it preloads the mock function so it will run fast!");
     test("Plain text", () => {
         const log = useLogger("Hello World");
 

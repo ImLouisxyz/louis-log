@@ -24,7 +24,6 @@ const defaultSettings: Types.LoggerSettings = {
         path: "./logs",
         json: false,
         txt: true,
-        db: false,
         splitBy: "day",
         stratagy: "single",
     },
@@ -75,50 +74,59 @@ export class Logger {
         };
 
         this.success("Initialised Logger");
+
         // TODO Change this to use the correct log! And better formatting
         this.debug("Settings:\n" + JSON.stringify(this.formatSettings, null, 4));
         this.debug("\n" + JSON.stringify(this.storageSettings, null, 4));
         this.debug("\n" + JSON.stringify(this.webhookSettings, null, 4) + "\n");
     }
-    private sendLog(logLevel: string, logMessage: string | number, logData: any) {
+    private sendLog(logLevel: Types.LogLevel, logMessage: string | number, logData: any) {
         const currentTime = new Date();
+        const logDataString = this.handleLogData(logData);
 
-        if (this.formatSettings.stdoutEnable) this.logToStdout(currentTime, logMessage, logLevel);
+        if (this.formatSettings.stdoutEnable && !this.formatSettings.ignoreLevels.includes(logLevel))
+            this.logToStdout(currentTime, logMessage, logLevel, logDataString);
     }
 
-    private logToStdout(currentTime: Date, logMessage: string | number, logLevel: string) {
+    private logToStdout(currentTime: Date, logMessage: string | number, logLevel: string, logDataString: string) {
         let outMessage = "";
+        outMessage += this.formatSettings.date
+            ? `[${new Intl.DateTimeFormat(this.formatSettings.dateCountry, this.formatSettings.dateformat).format(
+                  currentTime,
+              )}] `
+            : "";
 
-        if (this.formatSettings.date) {
-            outMessage += `[ ${new Intl.DateTimeFormat(
-                this.formatSettings.dateCountry,
-                this.formatSettings.dateformat,
-            ).format(currentTime)} ] `;
-        }
+        outMessage += this.formatSettings.mainProgram || this.formatSettings.subProgram ? "<" : "";
 
-        if (this.formatSettings.mainProgram || this.formatSettings.subProgram) {
-            outMessage += "<";
-        }
+        outMessage += this.formatSettings.mainProgram ? this.mainProcess : "";
 
-        if (this.formatSettings.mainProgram) {
-            outMessage += this.mainProcess;
-        }
+        outMessage += this.formatSettings.mainProgram && this.formatSettings.subProgram ? "." : "";
 
-        if (this.formatSettings.mainProgram && this.formatSettings.subProgram) {
-            outMessage += ".";
-        }
+        outMessage += this.formatSettings.subProgram ? this.subProcess : "";
 
-        if (this.formatSettings.subProgram) {
-            outMessage += this.subProcess;
-        }
+        outMessage += this.formatSettings.mainProgram || this.formatSettings.subProgram ? "> " : "";
 
-        if (this.formatSettings.mainProgram || this.formatSettings.subProgram) {
-            outMessage += ">";
-        }
+        outMessage += this.formatSettings.level ? `[${logLevel}] ` : "";
 
         outMessage += logMessage;
 
+        outMessage += logDataString;
+
         console.log(this.colours[logLevel](outMessage));
+    }
+
+    private logToFile(currentTime: Date, logMessage: string | number, logLevel: string, logDataString: string) {}
+
+    private handleLogData(logData: any): string {
+        if (logData == undefined) return "";
+
+        const dataType = typeof logData;
+
+        if (dataType == "string") return logData;
+
+        if (["bigint", "boolean", "number"].includes(dataType)) return logData.toString();
+
+        return dataType;
     }
 
     // Print methods
