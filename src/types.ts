@@ -15,10 +15,13 @@ export type LogWebhookSettings = {
 };
 
 export type LogFormatSettings = {
+    stdoutEnable: boolean;
     mainProgram: boolean;
     subProgram: boolean;
     date: boolean;
-    dateformat?: Intl.DateTimeFormatOptions;
+    dateformat: Intl.DateTimeFormatOptions;
+    dateCountry: string;
+    level: boolean;
     ignoreLevels?: LogLevel[];
 };
 

@@ -11,13 +11,13 @@ const useLogger = mock((logMessage: string) => {
     };
 
     // Create a new Logger instance and log a message
-    const logger = new Logger({ show: { mainProgram: false } });
+    const logger = new Logger("Bun-testing", "log-tests", {});
     logger.log(logMessage);
 
     // Restore original console.log
     console.log = originalLog;
 
-    logger.log(stdout);
+    console.log(stdout);
 
     return stdout;
 });

@@ -3,6 +3,7 @@ import * as Types from "./types.ts";
 
 const defaultSettings: Types.LoggerSettings = {
     show: {
+        stdoutEnable: true,
         mainProgram: true,
         subProgram: true,
         date: true,
@@ -15,6 +16,8 @@ const defaultSettings: Types.LoggerSettings = {
             second: "2-digit",
             hour12: false, // 24-hour
         },
+        dateCountry: "en",
+        level: true,
         ignoreLevels: ["DEBUG"],
     },
     logStorage: {
@@ -37,7 +40,24 @@ export class Logger {
     private storageSettings: Types.LogStorageSettings;
     private webhookSettings: Types.LogWebhookSettings;
 
-    constructor(userSettings: Partial<Types.CustomLoggerSettings> = {}) {
+    public mainProcess: string;
+    public subProcess: string;
+
+    // * Might need to add more types for logMessage
+    // TODO add colour theme changing support
+    private colours: { [key: string]: Function } = {
+        FATAL: chalk.bgRedBright,
+        ERROR: chalk.red,
+        WARN: chalk.yellow,
+        SUCCESS: chalk.green,
+        INFO: chalk.blue,
+        DEBUG: chalk.magenta,
+    };
+
+    constructor(mainProcess: string, subProcess: string, userSettings: Partial<Types.CustomLoggerSettings> = {}) {
+        this.mainProcess = mainProcess;
+        this.subProcess = subProcess;
+
         // Apply Defualt settings
         this.formatSettings = {
             ...defaultSettings.show,
@@ -54,38 +74,51 @@ export class Logger {
             ...userSettings.logWebook,
         };
 
+        this.success("Initialised Logger");
         // TODO Change this to use the correct log! And better formatting
-        console.log(chalk.yellow("=========== Settings ==========="));
-        console.log(chalk.yellow(JSON.stringify(this.formatSettings, null, 4)));
-        console.log(chalk.yellow(JSON.stringify(this.storageSettings, null, 4)));
-        console.log(chalk.yellow(JSON.stringify(this.webhookSettings, null, 4)));
-        console.log(chalk.yellow("=========== Settings ==========="));
+        this.debug("Settings:\n" + JSON.stringify(this.formatSettings, null, 4));
+        this.debug("\n" + JSON.stringify(this.storageSettings, null, 4));
+        this.debug("\n" + JSON.stringify(this.webhookSettings, null, 4) + "\n");
     }
     private sendLog(logLevel: string, logMessage: string | number, logData: any) {
         const currentTime = new Date();
 
-        // !Might need to add more types for logMessage
-        let colours: { [key: string]: Function } = {
-            FATAL: chalk.redBright,
-            ERROR: chalk.red,
-            WARN: chalk.yellow,
-            SUCCESS: chalk.green,
-            INFO: chalk.blue,
-            DEBUG: chalk.magenta,
-        };
+        if (this.formatSettings.stdoutEnable) this.logToStdout(currentTime, logMessage, logLevel);
+    }
 
+    private logToStdout(currentTime: Date, logMessage: string | number, logLevel: string) {
         let outMessage = "";
 
         if (this.formatSettings.date) {
-            outMessage += `[${new Intl.DateTimeFormat("", this.formatSettings.dateformat)}]`;
+            outMessage += `[ ${new Intl.DateTimeFormat(
+                this.formatSettings.dateCountry,
+                this.formatSettings.dateformat,
+            ).format(currentTime)} ] `;
+        }
+
+        if (this.formatSettings.mainProgram || this.formatSettings.subProgram) {
+            outMessage += "<";
         }
 
         if (this.formatSettings.mainProgram) {
+            outMessage += this.mainProcess;
+        }
+
+        if (this.formatSettings.mainProgram && this.formatSettings.subProgram) {
+            outMessage += ".";
+        }
+
+        if (this.formatSettings.subProgram) {
+            outMessage += this.subProcess;
+        }
+
+        if (this.formatSettings.mainProgram || this.formatSettings.subProgram) {
+            outMessage += ">";
         }
 
         outMessage += logMessage;
 
-        console.log(colours[logLevel](outMessage));
+        console.log(this.colours[logLevel](outMessage));
     }
 
     // Print methods
