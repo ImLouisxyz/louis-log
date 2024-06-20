@@ -6,5 +6,4 @@ await Bun.build({
     minify: true,
     plugins: [dts()],
     target: "node",
-    format: "esm",
 });

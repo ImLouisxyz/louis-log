@@ -2,7 +2,7 @@
     "name": "louis-log",
     "version": "0.0.5",
     "main": "dist/index.js",
-    "type": "commonjs",
+    "type": "module",
     "types": "dist/index.d.ts",
     "description": "A logging solution for large projects",
     "scripts": {
