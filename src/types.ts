@@ -1,28 +1,27 @@
 export type LogStorageSettings = {
-    path: string;
-    json: boolean;
-    txt: boolean;
-    splitBy: "don't split" | "year" | "month" | "day" | "hour" | "minute" | "second";
-    stratagy: "single" | "batch";
-    batch: number;
-    ignoreLevels: LogLevel[];
+    path: string; // Location for logs to be placed
+    json: boolean; // Enable json logging
+    txt: boolean; // Enable txt logging (store stdout)
+    splitBy: "don't split" | "year" | "month" | "day" | "hour" | "minute" | "second"; // Split up log files by time
+    stratagy: "single" | "batch"; // How to handle disk accesses: single = every log means update logfile. batch = every x amount of logs means update
+    batch: number; // x count for log amounts
+    ignoreLevels: LogLevel[]; // If you don't want to store certain levels
 };
 
 export type LogWebhookSettings = {
-    enable: boolean;
-    url?: string | URL;
-    form?: "" | "discord"; // TODO: add support for more apis
+    enable: boolean; // Send to webhook
+    url?: string | URL; // URL for webhook
+    form?: "" | "discord"; // Formation of webhook
 };
 
 export type LogFormatSettings = {
-    stdoutEnable: boolean;
-    mainProgram: boolean;
-    subProgram: boolean;
-    date: boolean;
-    dateformat: string;
-    dateCountry: string;
-    level: boolean;
-    ignoreLevels: LogLevel[];
+    stdoutEnable: boolean; // Enable stdout
+    mainProgram: boolean; // Display of main process/program in txt logs and stdout
+    subProgram: boolean; // Display of sub process/program in txt logs and stdout
+    date: boolean; // Display Date in txt logs and stdout
+    dateformat: string; // Formatting of dates for logs
+    level: boolean; // Display the level of a log in logs
+    ignoreLevels: LogLevel[]; // If you don't want to store certain levels
 };
 
 export type LoggerSettings = {

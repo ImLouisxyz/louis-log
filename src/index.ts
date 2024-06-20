@@ -10,7 +10,6 @@ const defaultSettings: Types.LoggerSettings = {
         subProgram: true,
         date: true,
         dateformat: "yyyy-mm-dd HH:MM:ss:l Z",
-        dateCountry: "en",
         level: true,
         ignoreLevels: ["DEBUG"],
     },
@@ -31,12 +30,12 @@ const defaultSettings: Types.LoggerSettings = {
 };
 
 export class Logger {
-    private formatSettings: Types.LogFormatSettings;
-    private storageSettings: Types.LogStorageSettings;
-    private webhookSettings: Types.LogWebhookSettings;
+    private formatSettings!: Types.LogFormatSettings;
+    private storageSettings!: Types.LogStorageSettings;
+    private webhookSettings!: Types.LogWebhookSettings;
 
-    public mainProcess: string;
-    public subProcess: string;
+    public mainProcess!: string;
+    public subProcess!: string;
 
     // * Might need to add more types for logMessage
     // TODO add colour theme changing support
@@ -51,48 +50,98 @@ export class Logger {
 
     private logBuffer: Types.LogBufferItem[] = [];
 
+    /**
+     * Creates a new Logger
+     * @param {string} mainProcess - The name of the main process
+     * @param {string} subProcess  - The name of the subprocess sending the message (eg. Database Handler, Web Server)
+     * @param {Partial<Types.CustomLoggerSettings>} userSettings - *optional* custom settings
+     * @example
+        const logger = new louisLog.Logger("Example API", "/users")
+
+        logger.fatal("This is a fatal error");
+        logger.error("This is a normal error");
+        logger.err("This is a shorthand for error");
+        logger.warn("This is a warning");
+        logger.success("This is a success message");
+        logger.info("This is a normal log message");
+        logger.log("This is also a normal log message");
+        logger.debug("This is a debug message");
+
+        logger.exit(); // Make sure to call this if using batch mode to save any logs in memory
+    */
     constructor(mainProcess: string, subProcess: string, userSettings: Partial<Types.CustomLoggerSettings> = {}) {
-        this.mainProcess = mainProcess;
-        this.subProcess = subProcess;
+        // Process tags
+        try {
+            this.mainProcess = mainProcess;
+            this.subProcess = subProcess;
+        } catch (error) {
+            console.error("There was an issue with initialising process names");
+            process.exit(1);
+        }
 
         // Apply Defualt settings
-        this.formatSettings = {
-            ...defaultSettings.show,
-            ...userSettings.show,
-        };
+        try {
+            this.formatSettings = {
+                ...defaultSettings.show,
+                ...userSettings.show,
+            };
+        } catch (error) {
+            console.error("There was an issue with initialising settings: format Settings", userSettings.show);
+            process.exit(1);
+        }
 
-        this.storageSettings = {
-            ...defaultSettings.logStorage,
-            ...userSettings.logStorage,
-        };
+        try {
+            this.storageSettings = {
+                ...defaultSettings.logStorage,
+                ...userSettings.logStorage,
+            };
+        } catch (error) {
+            console.error("There was an issue with initialising settings: storage Settings", userSettings.logStorage);
+            process.exit(1);
+        }
 
-        this.webhookSettings = {
-            ...defaultSettings.logWebook,
-            ...userSettings.logWebook,
-        };
+        try {
+            this.webhookSettings = {
+                ...defaultSettings.logWebook,
+                ...userSettings.logWebook,
+            };
+        } catch (error) {
+            console.error("There was an issue with initialising settings: webhook Settings", userSettings.logWebook);
+            process.exit(1);
+        }
 
-        this.success(`Initialised Logger`);
+        // Finished initialising
+        try {
+            this.success(`Initialised Logger`);
 
-        this.debug("Settings:\n" + JSON.stringify(this.formatSettings, null, 4));
-        this.debug("\n" + JSON.stringify(this.storageSettings, null, 4));
-        this.debug("\n" + JSON.stringify(this.webhookSettings, null, 4) + "\n");
+            this.debug("Settings:\n" + JSON.stringify(this.formatSettings, null, 4));
+            this.debug("\n" + JSON.stringify(this.storageSettings, null, 4));
+            this.debug("\n" + JSON.stringify(this.webhookSettings, null, 4) + "\n");
+        } catch (error) {
+            console.error("There was an issue with logging settings");
+            process.exit(1);
+        }
     }
     private sendLog(logLevel: Types.LogLevel, logMessage: any, logData: any) {
-        const currentTime = new Date();
-        const formattedDate: string = dateFormat(currentTime, this.formatSettings.dateformat);
-        const logMessageString = this.handleLogDatatype(logMessage);
-        const logDataString = this.handleLogDatatype(logData);
+        try {
+            const currentTime = new Date();
+            const formattedDate: string = dateFormat(currentTime, this.formatSettings.dateformat);
+            const logMessageString = this.handleLogDatatype(logMessage);
+            const logDataString = this.handleLogDatatype(logData);
 
-        const txtLog = this.formTxtLog(formattedDate, logMessageString, logLevel, logDataString);
+            const txtLog = this.formTxtLog(formattedDate, logMessageString, logLevel, logDataString);
 
-        if (this.formatSettings.stdoutEnable && !this.formatSettings.ignoreLevels.includes(logLevel))
-            console.log(this.colours[logLevel](txtLog));
+            if (this.formatSettings.stdoutEnable && !this.formatSettings.ignoreLevels.includes(logLevel))
+                console.log(this.colours[logLevel](txtLog));
 
-        if (
-            (this.storageSettings.json || this.storageSettings.txt) &&
-            !this.storageSettings.ignoreLevels.includes(logLevel)
-        )
-            this.logToFile(currentTime, formattedDate, logMessageString, logLevel, logDataString, txtLog);
+            if (
+                (this.storageSettings.json || this.storageSettings.txt) &&
+                !this.storageSettings.ignoreLevels.includes(logLevel)
+            )
+                this.logToFile(currentTime, formattedDate, logMessageString, logLevel, logDataString, txtLog);
+        } catch (error) {
+            console.error("There was an issue logging data", error);
+        }
     }
 
     private formTxtLog(formattedDate: string, logMessage: string, logLevel: string, logDataString: string): string {
@@ -275,6 +324,7 @@ export class Logger {
     }
 
     // Print methods
+
     fatal(message: string, data?: any) {
         this.sendLog("FATAL", message, data);
     }
@@ -305,8 +355,19 @@ export class Logger {
     }
 
     // Closing process
+
+    /**
+     * Make sure to call this before exiting your program if using batch mode if you want your logs to save.
+     */
     exit() {
-        const currentTime = new Date();
-        this.extractBuffer(currentTime);
+        if (this.storageSettings.stratagy == "batch") {
+            try {
+                const currentTime = new Date();
+                this.extractBuffer(currentTime);
+                console.log("ready to shutdown");
+            } catch (error) {
+                console.error("There was an issue clearing the buffer", error);
+            }
+        }
     }
 }
