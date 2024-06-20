@@ -1,8 +1,9 @@
 import chalk from "chalk";
 import dateFormat from "dateformat";
 import * as Types from "./types.ts";
-import { appendFileSync } from "node:fs";
-import { BunFile, FileSink } from "bun";
+import * as fs from "node:fs";
+import * as path from "path";
+import { FileSink } from "bun";
 
 const defaultSettings: Types.LoggerSettings = {
     show: {
@@ -20,8 +21,8 @@ const defaultSettings: Types.LoggerSettings = {
         json: true,
         txt: true,
         splitBy: "day",
-        stratagy: "single",
-        batch: 1,
+        stratagy: "batch",
+        batch: 10,
         ignoreLevels: ["DEBUG"],
     },
     logWebook: {
@@ -56,6 +57,8 @@ export class Logger {
 
     private txtWriter: undefined | FileSink;
     private jsonWriter: undefined | FileSink;
+
+    private bufferCount: number = 1;
 
     constructor(mainProcess: string, subProcess: string, userSettings: Partial<Types.CustomLoggerSettings> = {}) {
         this.mainProcess = mainProcess;
@@ -99,6 +102,12 @@ export class Logger {
 
         if (this.formatSettings.stdoutEnable && !this.formatSettings.ignoreLevels.includes(logLevel))
             console.log(this.colours[logLevel](txtLog));
+
+        if (
+            (this.storageSettings.json || this.storageSettings.txt) &&
+            !this.storageSettings.ignoreLevels.includes(logLevel)
+        )
+            this.logToFile(currentTime, formattedDate, logMessageString, logLevel, logDataString, txtLog);
     }
 
     private formTxtLog(formattedDate: string, logMessage: string, logLevel: string, logDataString: string): string {
@@ -130,6 +139,7 @@ export class Logger {
         logMessageString: string,
         logLevel: string,
         logDataString: string,
+        logTxt: string,
     ) {
         // TODO add filestorage
 
@@ -145,7 +155,7 @@ export class Logger {
             logData: logDataString,
         };
 
-        let logJSONString: string;
+        let logJSONString: string = "";
 
         try {
             logJSONString = JSON.stringify(logJSON);
@@ -154,34 +164,37 @@ export class Logger {
         }
 
         let logLocation = this.storageSettings.path;
+        let dirLocation = this.storageSettings.path;
+        //        dateformat: "yyyy-mm-dd HH:MM:ss:l Z",
 
         switch (this.storageSettings.splitBy) {
             case "don't split":
-                logLocation += "logs.";
+                dirLocation += `/`;
+                logLocation += dirLocation + "logs.";
                 break;
             case "year":
-                logLocation += `/${currentTime.getFullYear()}.`;
+                dirLocation += `/`;
+                logLocation += `${dateFormat(currentTime, "yyyy")}.`;
                 break;
             case "month":
-                logLocation += `/${currentTime.getFullYear()}/${currentTime.getMonth()}.`;
+                dirLocation += `/${dateFormat(currentTime, "yyyy")}/`;
+                logLocation += dirLocation + `${dateFormat(currentTime, "mm")}.`;
                 break;
             case "day":
-                logLocation += `/${currentTime.getFullYear()}/${currentTime.getMonth()}/${currentTime.getDate}.`;
+                dirLocation += `/${dateFormat(currentTime, "yyyy/mm")}/`;
+                logLocation += dirLocation + `${dateFormat(currentTime, "dd")}.`;
                 break;
             case "hour":
-                logLocation += `/${currentTime.getFullYear()}/${currentTime.getMonth()}/${
-                    currentTime.getDate
-                }/${currentTime.getHours()}.`;
+                dirLocation += `/${dateFormat(currentTime, "yyyy/mm/dd")}/`;
+                logLocation += dirLocation + `${dateFormat(currentTime, "HH")}.`;
                 break;
             case "minute":
-                logLocation += `/${currentTime.getFullYear()}/${currentTime.getMonth()}/${
-                    currentTime.getDate
-                }/${currentTime.getHours()}/${currentTime.getMinutes()}.`;
+                dirLocation += `/${dateFormat(currentTime, "yyyy/mm/dd/HH")}/`;
+                logLocation += dirLocation + `${dateFormat(currentTime, "MM")}.`;
                 break;
             case "second":
-                logLocation += `/${currentTime.getFullYear()}/${currentTime.getMonth()}/${
-                    currentTime.getDate
-                }/${currentTime.getHours()}/${currentTime.getMinutes()}.`;
+                dirLocation += `/${dateFormat(currentTime, "yyyy/mm/dd/HH/MM")}/`;
+                logLocation += dirLocation + `${dateFormat(currentTime, "ss")}.`;
                 break;
             default:
                 this.error("Logger split by value is invalid", this.storageSettings.splitBy);
@@ -194,14 +207,19 @@ export class Logger {
                 if (this.txtWriter != undefined) this.txtWriter.end();
                 if (this.jsonWriter != undefined) this.jsonWriter.end();
 
-                this.txtWriter = Bun.file(logLocation).writer({ highWaterMark: 1024 * 128 }); // Auto flush at 128Kb
-                this.jsonWriter = Bun.file(logLocation, { type: "application/json" }).writer({
+                console.log(logLocation);
+                console.log(logLocation + "txt");
+                console.log(logLocation + "json");
+
+                this.txtWriter = Bun.file(logLocation + "txt").writer({ highWaterMark: 1024 * 128 }); // Auto flush at 128Kb
+                this.jsonWriter = Bun.file(logLocation + "json", { type: "application/json" }).writer({
                     highWaterMark: 1024 * 128,
                 }); // Auto flush at 128Kb
             }
 
             // Write logs
-            // if (this.storageSettings.txt && this.txtWriter != undefined) this.txtWriter.write();
+            if (this.storageSettings.txt && this.txtWriter != undefined) this.txtWriter.write(logTxt);
+            if (this.storageSettings.json && this.jsonWriter != undefined) this.jsonWriter.write(logJSONString);
         }
     }
 
