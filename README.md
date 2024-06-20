@@ -1,6 +1,6 @@
 # Louis-Log
 
-Customisable JSON logging soluion
+Customisable JSON logging solution
 
 ## Features
 
@@ -30,7 +30,7 @@ JSON log example:
     "subProcess": "testing even more",
     "logLevel": "INFO",
     "logMessage": "This has extra data",
-    "logData": "{\n    \"You\": \"can put anything you like here\"\n}"
+    "logData": "{\n \"You\": \"can put anything you like here\"\n}"
 }
 ```
 
