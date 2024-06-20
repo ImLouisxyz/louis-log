@@ -2,6 +2,7 @@ import chalk from "chalk";
 import dateFormat from "dateformat";
 import * as Types from "./types";
 import * as fs from "node:fs";
+import fetch from "node-fetch";
 
 import "dotenv/config";
 
@@ -26,7 +27,7 @@ const defaultSettings: Types.LoggerSettings = {
     },
     logWebook: {
         enable: false,
-        url: "",
+        url: undefined,
         form: "",
     },
 };
@@ -141,11 +142,55 @@ export default class Logger {
                 !this.storageSettings.ignoreLevels.includes(logLevel)
             )
                 this.logToFile(currentTime, formattedDate, logMessageString, logLevel, logDataString, txtLog);
+
+            if (this.webhookSettings.enable)
+                this.sendWebhook(currentTime, formattedDate, logMessageString, logLevel, logDataString, txtLog);
         } catch (error) {
             console.error("There was an issue logging data", error);
         }
     }
+    private sendWebhook(
+        currentTime: Date,
+        formattedDate: string,
+        logMessageString: string,
+        logLevel: string,
+        logDataString: string,
+        logTxt: string,
+    ) {
+        if (logLevel == "FATAL-RATE") return; // ! Very important. This prevents a discord error due to rate limiting from sending another message and further rate limiting.
+        if (this.webhookSettings.url == undefined) return;
+        if (this.webhookSettings.form != "discord") {
+            this.error("Currently only discord webhooks have been implemented");
+            return;
+        }
 
+        fetch(this.webhookSettings.url, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                username: `${this.mainProcess}.${this.subProcess}`,
+                content: null,
+                embeds: [
+                    {
+                        title: `[${logLevel}] ${logMessageString}`,
+                        description: `${logDataString}`,
+                        color: null,
+                        timestamp: currentTime,
+                    },
+                ],
+                attachments: [],
+            }),
+        })
+            .then((res) => {
+                if (res.status != 204)
+                    this.fatalRate("Unexpected response from webhook", { status: res.status, message: res.statusText });
+            })
+            .catch((err) => {
+                this.fatalRate("Webhook failed to send", { error: err });
+            });
+    }
     private formTxtLog(formattedDate: string, logMessage: string, logLevel: string, logDataString: string): string {
         let outMessage = "";
         outMessage += this.formatSettings.date ? `[${formattedDate}] ` : "";
@@ -327,32 +372,36 @@ export default class Logger {
 
     // Print methods
 
-    fatal(message: string, data?: any) {
+    fatal(message: any, data?: any) {
         this.sendLog("FATAL", message, data);
     }
 
-    error(message: string, data?: any) {
+    private fatalRate(message: any, data?: any) {
+        this.sendLog("FATAL-RATE", message, data);
+    }
+
+    error(message: any, data?: any) {
         this.sendLog("ERROR", message, data);
     }
 
     err = this.error;
 
-    warn(message: string, data?: any) {
+    warn(message: any, data?: any) {
         this.sendLog("WARN", message, data);
     }
 
-    success(message: string, data?: any) {
+    success(message: any, data?: any) {
         this.sendLog("SUCCESS", message, data);
     }
 
     // Info and log do the same thing
-    info(message: string, data?: any) {
+    info(message: any, data?: any) {
         this.sendLog("INFO", message, data);
     }
 
     log = this.info;
 
-    debug(message: string, data?: any) {
+    debug(message: any, data?: any) {
         this.sendLog("DEBUG", message, data);
     }
 

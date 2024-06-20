@@ -11,7 +11,7 @@ export type LogStorageSettings = {
 };
 export type LogWebhookSettings = {
 	enable: boolean;
-	url?: string | URL;
+	url?: URL;
 	form?: "" | "discord";
 };
 export type LogFormatSettings = {
@@ -28,7 +28,7 @@ export type CustomLoggerSettings = {
 	logWebook: Partial<LogWebhookSettings>;
 	show: Partial<LogFormatSettings>;
 };
-export type LogLevel = "FATAL" | "ERROR" | "WARN" | "SUCCESS" | "INFO" | "DEBUG";
+export type LogLevel = "FATAL" | "FATAL-RATE" | "ERROR" | "WARN" | "SUCCESS" | "INFO" | "DEBUG";
 export default class Logger {
 	private formatSettings;
 	private storageSettings;
@@ -58,19 +58,21 @@ export default class Logger {
 	*/
 	constructor(mainProcess: string, subProcess: string, userSettings?: Partial<Types.CustomLoggerSettings>);
 	private sendLog;
+	private sendWebhook;
 	private formTxtLog;
 	private logToFile;
 	private generatePaths;
 	private extractBuffer;
 	private handleLogDatatype;
-	fatal(message: string, data?: any): void;
-	error(message: string, data?: any): void;
-	err: (message: string, data?: any) => void;
-	warn(message: string, data?: any): void;
-	success(message: string, data?: any): void;
-	info(message: string, data?: any): void;
-	log: (message: string, data?: any) => void;
-	debug(message: string, data?: any): void;
+	fatal(message: any, data?: any): void;
+	private fatalRate;
+	error(message: any, data?: any): void;
+	err: (message: any, data?: any) => void;
+	warn(message: any, data?: any): void;
+	success(message: any, data?: any): void;
+	info(message: any, data?: any): void;
+	log: (message: any, data?: any) => void;
+	debug(message: any, data?: any): void;
 	/**
 	 * Make sure to call this before exiting your program if using batch mode if you want your logs to save.
 	 */

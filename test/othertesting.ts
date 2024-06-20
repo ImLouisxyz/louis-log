@@ -1,6 +1,8 @@
 import Logger from "../src/index.ts";
 
-const Testing = new Logger("Testing", "testing even more");
+const Testing = new Logger("Testing", "testing even more", {
+    logWebook: { enable: true, url: new URL(process.env.DISCORD_URL!), form: "discord" },
+});
 
 Testing.log("hello world! 101 :)");
 Testing.log("hello world! 202 :)");

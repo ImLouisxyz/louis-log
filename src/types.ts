@@ -10,7 +10,7 @@ export type LogStorageSettings = {
 
 export type LogWebhookSettings = {
     enable: boolean; // Send to webhook
-    url?: string | URL; // URL for webhook
+    url?: URL; // URL for webhook
     form?: "" | "discord"; // Formation of webhook
 };
 
@@ -36,7 +36,7 @@ export type CustomLoggerSettings = {
     show: Partial<LogFormatSettings>;
 };
 
-export type LogLevel = "FATAL" | "ERROR" | "WARN" | "SUCCESS" | "INFO" | "DEBUG";
+export type LogLevel = "FATAL" | "FATAL-RATE" | "ERROR" | "WARN" | "SUCCESS" | "INFO" | "DEBUG";
 
 export type LogJSON = {
     date: Date;

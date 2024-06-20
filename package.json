@@ -1,32 +1,33 @@
 {
-    "name": "louis-log",
-    "version": "0.0.5",
-    "main": "dist/index.js",
-    "type": "module",
-    "types": "dist/index.d.ts",
-    "description": "A logging solution for large projects",
-    "scripts": {
-        "run": "bun run src/index.ts",
-        "build": "bun run build.mjs",
-        "prepublishOnly": "bun run build"
-    },
-    "files": [
-        "dist"
-    ],
-    "keywords": [
-        "bun"
-    ],
-    "license": "MIT",
-    "author": "Bilbo1Gaming (Louis)",
-    "devDependencies": {
-        "@types/bun": "^1.0.0",
-        "@types/dateformat": "^5.0.2",
-        "bun-plugin-dts": "^0.2.1",
-        "typescript": "^5.4.5"
-    },
-    "dependencies": {
-        "chalk": "^5.3.0",
-        "dateformat": "^5.0.3",
-        "dotenv": "^16.4.5"
-    }
+  "name": "louis-log",
+  "version": "0.0.5",
+  "main": "dist/index.js",
+  "type": "module",
+  "types": "dist/index.d.ts",
+  "description": "A logging solution for large projects",
+  "scripts": {
+    "run": "bun run src/index.ts",
+    "build": "bun run build.mjs",
+    "prepublishOnly": "bun run build"
+  },
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "bun"
+  ],
+  "license": "MIT",
+  "author": "Bilbo1Gaming (Louis)",
+  "devDependencies": {
+    "@types/bun": "^1.0.0",
+    "@types/dateformat": "^5.0.2",
+    "bun-plugin-dts": "^0.2.1",
+    "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "dateformat": "^5.0.3",
+    "dotenv": "^16.4.5",
+    "node-fetch": "^3.3.2"
+  }
 }
