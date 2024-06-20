@@ -1,6 +1,7 @@
 import chalk from "chalk";
 import dateFormat from "dateformat";
 import * as Types from "./types.ts";
+import { appendFileSync } from "node:fs";
 
 const defaultSettings: Types.LoggerSettings = {
     show: {
@@ -19,6 +20,8 @@ const defaultSettings: Types.LoggerSettings = {
         txt: true,
         splitBy: "day",
         stratagy: "single",
+        batch: 1,
+        ignoreLevels: ["DEBUG"],
     },
     logWebook: {
         enable: false,
@@ -26,6 +29,8 @@ const defaultSettings: Types.LoggerSettings = {
         form: "",
     },
 };
+
+const usingBun: boolean = process.versions.bun == undefined ? false : true;
 
 export class Logger {
     private formatSettings: Types.LogFormatSettings;
@@ -66,24 +71,31 @@ export class Logger {
             ...userSettings.logWebook,
         };
 
-        this.success("Initialised Logger");
+        this.success(`Initialised Logger, Running in bun? > ${usingBun}`);
 
         // TODO Change this to use the correct log! And better formatting
         this.debug("Settings:\n" + JSON.stringify(this.formatSettings, null, 4));
         this.debug("\n" + JSON.stringify(this.storageSettings, null, 4));
         this.debug("\n" + JSON.stringify(this.webhookSettings, null, 4) + "\n");
+
+        if (this.storageSettings.stratagy == "batch" && !usingBun) {
+            this.fatal("Logger cannot use batch mode when not running in bun");
+            process.exit(1);
+        }
     }
-    private sendLog(logLevel: Types.LogLevel, logMessage: string | number, logData: any) {
+    private sendLog(logLevel: Types.LogLevel, logMessage: any, logData: any) {
         const currentTime = new Date();
-        const logDataString = this.handleLogData(logData);
+        const formattedDate: string = dateFormat(currentTime, this.formatSettings.dateformat);
+        const logMessageString = this.handleLogDatatype(logMessage);
+        const logDataString = this.handleLogDatatype(logData);
 
         if (this.formatSettings.stdoutEnable && !this.formatSettings.ignoreLevels.includes(logLevel))
-            this.logToStdout(currentTime, logMessage, logLevel, logDataString);
+            this.logToStdout(formattedDate, logMessageString, logLevel, logDataString);
     }
 
-    private logToStdout(currentTime: Date, logMessage: string | number, logLevel: string, logDataString: string) {
+    private logToStdout(formattedDate: string, logMessage: string, logLevel: string, logDataString: string) {
         let outMessage = "";
-        outMessage += this.formatSettings.date ? `[${dateFormat(currentTime, this.formatSettings.dateformat)}] ` : "";
+        outMessage += this.formatSettings.date ? `[${formattedDate}] ` : "";
 
         outMessage += this.formatSettings.mainProgram || this.formatSettings.subProgram ? "<" : "";
 
@@ -104,11 +116,48 @@ export class Logger {
         console.log(this.colours[logLevel](outMessage));
     }
 
-    private logToFile(currentTime: Date, logMessage: string | number, logLevel: string, logDataString: string) {
+    private logToFile(
+        currentTime: Date,
+        formattedDate: string,
+        logMessageString: string,
+        logLevel: string,
+        logDataString: string,
+    ) {
         // TODO add filestorage
+
+        // Form log JSON
+
+        const logJSON: Types.LogJSON = {
+            date: currentTime,
+            formattedDate: formattedDate,
+            mainProcess: this.mainProcess,
+            subProcess: this.subProcess,
+            logLevel: logLevel,
+            logMessage: logMessageString,
+            logData: logDataString,
+        };
+
+        let logJSONString: string;
+
+        try {
+            logJSONString = JSON.stringify(logJSON);
+        } catch (error) {
+            this.error("Error converting logJSON to string", { error: error, data: logJSON });
+        }
+
+        let logLocation = this.storageSettings.path;
+
+        switch (this.storageSettings.splitBy) {
+            case "year":
+                logLocation += `/${currentTime.getFullYear()}/logs.`;
+                break;
+            case "month":
+                logLocation += `/${currentTime.getFullYear()}/${currentTime.getMonth()}/logs.`;
+                break;
+        }
     }
 
-    private handleLogData(logData: any): string {
+    private handleLogDatatype(logData: any): string {
         if (logData == undefined) return "";
 
         const dataType = typeof logData;
@@ -121,11 +170,12 @@ export class Logger {
             try {
                 return JSON.stringify(logData, null, 4);
             } catch (error) {
-                this.error("Datatype of object is not json");
+                this.error("Datatype of object is not json", { dataType: dataType, data: logData });
+                return "";
             }
         }
 
-        this.error("Datatype Error", dataType);
+        this.error("Datatype Error", { dataType: dataType, data: logData });
         return "Datatype error";
     }
 
@@ -137,6 +187,8 @@ export class Logger {
     error(message: string, data?: any) {
         this.sendLog("ERROR", message, data);
     }
+
+    err = this.error;
 
     warn(message: string, data?: any) {
         this.sendLog("WARN", message, data);

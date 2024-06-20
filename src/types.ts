@@ -1,10 +1,11 @@
 export type LogStorageSettings = {
-    path?: string;
+    path: string;
     json: boolean;
     txt: boolean;
     splitBy: "year" | "month" | "day" | "hour" | "minute" | "second";
     stratagy: "single" | "batch";
-    batch?: number;
+    batch: number;
+    ignoreLevels: LogLevel[];
 };
 
 export type LogWebhookSettings = {
@@ -37,3 +38,13 @@ export type CustomLoggerSettings = {
 };
 
 export type LogLevel = "FATAL" | "ERROR" | "WARN" | "SUCCESS" | "INFO" | "DEBUG";
+
+export type LogJSON = {
+    date: Date;
+    formattedDate: string;
+    mainProcess: string;
+    subProcess: string;
+    logLevel: string;
+    logMessage: string;
+    logData: any;
+};
