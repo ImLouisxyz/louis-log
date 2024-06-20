@@ -3,7 +3,6 @@ import dateFormat from "dateformat";
 import * as Types from "./types.ts";
 import * as fs from "node:fs";
 import * as path from "path";
-import { FileSink } from "bun";
 
 const defaultSettings: Types.LoggerSettings = {
     show: {
@@ -32,8 +31,6 @@ const defaultSettings: Types.LoggerSettings = {
     },
 };
 
-const usingBun: boolean = process.versions.bun == undefined ? false : true;
-
 export class Logger {
     private formatSettings: Types.LogFormatSettings;
     private storageSettings: Types.LogStorageSettings;
@@ -54,9 +51,6 @@ export class Logger {
     };
 
     private oldLogLocation: string = "";
-
-    private txtWriter: undefined | FileSink;
-    private jsonWriter: undefined | FileSink;
 
     private bufferCount: number = 1;
 
@@ -80,17 +74,12 @@ export class Logger {
             ...userSettings.logWebook,
         };
 
-        this.success(`Initialised Logger, Running in bun? > ${usingBun}`);
+        this.success(`Initialised Logger`);
 
         // TODO Change this to use the correct log! And better formatting
         this.debug("Settings:\n" + JSON.stringify(this.formatSettings, null, 4));
         this.debug("\n" + JSON.stringify(this.storageSettings, null, 4));
         this.debug("\n" + JSON.stringify(this.webhookSettings, null, 4) + "\n");
-
-        if (this.storageSettings.stratagy == "batch" && !usingBun) {
-            this.fatal("Logger cannot use batch mode when not running in bun");
-            process.exit(1);
-        }
     }
     private sendLog(logLevel: Types.LogLevel, logMessage: any, logData: any) {
         const currentTime = new Date();
@@ -163,7 +152,7 @@ export class Logger {
             this.error("Error converting logJSON to string", { error: error, data: logJSON });
         }
 
-        let logLocation = this.storageSettings.path;
+        let logLocation = "";
         let dirLocation = this.storageSettings.path;
         //        dateformat: "yyyy-mm-dd HH:MM:ss:l Z",
 
@@ -204,22 +193,30 @@ export class Logger {
         if (this.storageSettings.stratagy == "batch" && this.storageSettings.batch > 1) {
             // Update Log Location
             if (this.oldLogLocation != logLocation) {
-                if (this.txtWriter != undefined) this.txtWriter.end();
-                if (this.jsonWriter != undefined) this.jsonWriter.end();
+                // if (this.txtWriter != undefined) this.txtWriter.end();
+                // if (this.jsonWriter != undefined) this.jsonWriter.end();
 
-                console.log(logLocation);
-                console.log(logLocation + "txt");
-                console.log(logLocation + "json");
+                if (!fs.existsSync(dirLocation)) {
+                    fs.mkdirSync(dirLocation, { recursive: true });
+                }
 
-                this.txtWriter = Bun.file(logLocation + "txt").writer({ highWaterMark: 1024 * 128 }); // Auto flush at 128Kb
-                this.jsonWriter = Bun.file(logLocation + "json", { type: "application/json" }).writer({
-                    highWaterMark: 1024 * 128,
-                }); // Auto flush at 128Kb
+                const txtWriteStream = fs.createWriteStream(logLocation + "txt", { flags: "a" });
+                txtWriteStream.write(logTxt + "\n");
+                txtWriteStream.end();
+
+                const jsonWriteStream = fs.createWriteStream(logLocation + "json", { flags: "a" });
+                jsonWriteStream.write(logJSONString);
+                jsonWriteStream.end();
+
+                // this.txtWriter = Bun.file(logLocation + "txt", { mode: "a" }).writer({ highWaterMark: 1024 * 128 }); // Auto flush at 128Kb
+                // this.jsonWriter = Bun.file(logLocation + "json", { type: "application/json", mode: "a" }).writer({
+                //     highWaterMark: 1024 * 128,
+                // }); // Auto flush at 128Kb
             }
 
             // Write logs
-            if (this.storageSettings.txt && this.txtWriter != undefined) this.txtWriter.write(logTxt);
-            if (this.storageSettings.json && this.jsonWriter != undefined) this.jsonWriter.write(logJSONString);
+            // if (this.storageSettings.txt && this.txtWriter != undefined) this.txtWriter.write(logTxt);
+            // if (this.storageSettings.json && this.jsonWriter != undefined) this.jsonWriter.write(logJSONString);
         }
     }
 
@@ -277,9 +274,9 @@ export class Logger {
 
     // Closing process
     exit() {
-        if (usingBun) {
-            if (this.txtWriter != undefined) this.txtWriter.end();
-            if (this.jsonWriter != undefined) this.jsonWriter.end();
-        }
+        // if (usingBun) {
+        //     // if (this.txtWriter != undefined) this.txtWriter.end();
+        //     // if (this.jsonWriter != undefined) this.jsonWriter.end();
+        // }
     }
 }
