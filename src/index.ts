@@ -73,7 +73,6 @@ export class Logger {
 
         this.success(`Initialised Logger`);
 
-        // TODO Change this to use the correct log! And better formatting
         this.debug("Settings:\n" + JSON.stringify(this.formatSettings, null, 4));
         this.debug("\n" + JSON.stringify(this.storageSettings, null, 4));
         this.debug("\n" + JSON.stringify(this.webhookSettings, null, 4) + "\n");
@@ -127,8 +126,6 @@ export class Logger {
         logDataString: string,
         logTxt: string,
     ) {
-        // TODO add filestorage
-
         // Form log JSON
 
         const logJSON: Types.LogJSON = {
@@ -149,16 +146,17 @@ export class Logger {
             this.error("Error converting logJSON to string", { error: error, data: logJSON });
         }
 
+        // storing
         if (this.storageSettings.stratagy == "batch" && this.storageSettings.batch > 1) {
             // Update buffer
             let bufferLength: number = this.logBuffer.push({ logTXT: logTxt, logJSONString: logJSONString });
 
+            // if we are at batch count, send to file
             if (bufferLength >= this.storageSettings.batch) {
                 this.extractBuffer(currentTime);
             }
-
-            // File handling
         } else {
+            // send file every time
             let { dirLocation, logLocation } = this.generatePaths(currentTime);
 
             if (!fs.existsSync(dirLocation)) {
@@ -220,8 +218,6 @@ export class Logger {
     }
 
     private extractBuffer(currentTime: Date) {
-        console.log(this.logBuffer);
-
         let { dirLocation, logLocation } = this.generatePaths(currentTime);
 
         if (!fs.existsSync(dirLocation)) {
@@ -231,11 +227,17 @@ export class Logger {
         let txtUnpacked: string = "";
         let jsonUnpacked: string = "";
 
-        this.logBuffer.forEach((logItem: Types.LogBufferItem) => {
-            txtUnpacked += logItem.logTXT + "\n";
-            jsonUnpacked += logItem.logJSONString + "\n";
-            this.logBuffer.shift();
-        });
+        let bufferLength = this.logBuffer.length;
+
+        for (let i = 0; i < bufferLength; i++) {
+            let logItem = this.logBuffer.shift();
+            if (logItem == undefined) {
+                this.error("Log buffer item is empty whilst trying to read from it");
+            } else {
+                txtUnpacked += logItem.logTXT + "\n";
+                jsonUnpacked += logItem.logJSONString + "\n";
+            }
+        }
 
         if (this.storageSettings.txt) {
             const txtWriteStream = fs.createWriteStream(logLocation + "txt.log", { flags: "a" });
@@ -304,7 +306,7 @@ export class Logger {
 
     // Closing process
     exit() {
-        // const currentTime = new Date();
-        // this.extractBuffer(currentTime);
+        const currentTime = new Date();
+        this.extractBuffer(currentTime);
     }
 }
