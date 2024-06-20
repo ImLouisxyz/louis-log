@@ -29,7 +29,7 @@ export type CustomLoggerSettings = {
 	show: Partial<LogFormatSettings>;
 };
 export type LogLevel = "FATAL" | "ERROR" | "WARN" | "SUCCESS" | "INFO" | "DEBUG";
-export declare class Logger {
+export default class Logger {
 	private formatSettings;
 	private storageSettings;
 	private webhookSettings;

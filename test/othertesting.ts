@@ -1,4 +1,4 @@
-import { Logger } from "../src/index.ts";
+import Logger from "../src/index.ts";
 
 const Testing = new Logger("Testing", "testing even more");
 

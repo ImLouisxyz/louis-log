@@ -31,7 +31,7 @@ const defaultSettings: Types.LoggerSettings = {
     },
 };
 
-export class Logger {
+export default class Logger {
     private formatSettings!: Types.LogFormatSettings;
     private storageSettings!: Types.LogStorageSettings;
     private webhookSettings!: Types.LogWebhookSettings;

@@ -1,5 +1,5 @@
 import { describe, test, expect, mock } from "bun:test";
-import { Logger } from "../src/index.ts";
+import Logger from "../src/index.ts";
 
 const useLogger = mock((logMessage: string) => {
     const originalLog = console.log;
