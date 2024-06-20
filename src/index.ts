@@ -2,7 +2,6 @@ import chalk from "chalk";
 import dateFormat from "dateformat";
 import * as Types from "./types.ts";
 import * as fs from "node:fs";
-import * as path from "path";
 
 const defaultSettings: Types.LoggerSettings = {
     show: {
@@ -21,7 +20,7 @@ const defaultSettings: Types.LoggerSettings = {
         txt: true,
         splitBy: "day",
         stratagy: "batch",
-        batch: 10,
+        batch: 6,
         ignoreLevels: ["DEBUG"],
     },
     logWebook: {
@@ -50,9 +49,7 @@ export class Logger {
         DEBUG: chalk.magenta,
     };
 
-    private oldLogLocation: string = "";
-
-    private bufferCount: number = 1;
+    private logBuffer: Types.LogBufferItem[] = [];
 
     constructor(mainProcess: string, subProcess: string, userSettings: Partial<Types.CustomLoggerSettings> = {}) {
         this.mainProcess = mainProcess;
@@ -152,10 +149,40 @@ export class Logger {
             this.error("Error converting logJSON to string", { error: error, data: logJSON });
         }
 
+        if (this.storageSettings.stratagy == "batch" && this.storageSettings.batch > 1) {
+            // Update buffer
+            let bufferLength: number = this.logBuffer.push({ logTXT: logTxt, logJSONString: logJSONString });
+
+            if (bufferLength >= this.storageSettings.batch) {
+                this.extractBuffer(currentTime);
+            }
+
+            // File handling
+        } else {
+            let { dirLocation, logLocation } = this.generatePaths(currentTime);
+
+            if (!fs.existsSync(dirLocation)) {
+                fs.mkdirSync(dirLocation, { recursive: true });
+            }
+
+            if (this.storageSettings.txt) {
+                const txtWriteStream = fs.createWriteStream(logLocation + "txt.log", { flags: "a" });
+                txtWriteStream.write(logTxt + "\n");
+                txtWriteStream.end();
+            }
+
+            if (this.storageSettings.json) {
+                const jsonWriteStream = fs.createWriteStream(logLocation + "json.log", { flags: "a" });
+                jsonWriteStream.write(logJSONString + "\n");
+                jsonWriteStream.end();
+            }
+        }
+    }
+
+    private generatePaths(currentTime: Date) {
         let logLocation = "";
         let dirLocation = this.storageSettings.path;
         //        dateformat: "yyyy-mm-dd HH:MM:ss:l Z",
-
         switch (this.storageSettings.splitBy) {
             case "don't split":
                 dirLocation += `/`;
@@ -189,34 +216,37 @@ export class Logger {
                 this.error("Logger split by value is invalid", this.storageSettings.splitBy);
                 break;
         }
+        return { dirLocation, logLocation };
+    }
 
-        if (this.storageSettings.stratagy == "batch" && this.storageSettings.batch > 1) {
-            // Update Log Location
-            if (this.oldLogLocation != logLocation) {
-                // if (this.txtWriter != undefined) this.txtWriter.end();
-                // if (this.jsonWriter != undefined) this.jsonWriter.end();
+    private extractBuffer(currentTime: Date) {
+        console.log(this.logBuffer);
 
-                if (!fs.existsSync(dirLocation)) {
-                    fs.mkdirSync(dirLocation, { recursive: true });
-                }
+        let { dirLocation, logLocation } = this.generatePaths(currentTime);
 
-                const txtWriteStream = fs.createWriteStream(logLocation + "txt", { flags: "a" });
-                txtWriteStream.write(logTxt + "\n");
-                txtWriteStream.end();
+        if (!fs.existsSync(dirLocation)) {
+            fs.mkdirSync(dirLocation, { recursive: true });
+        }
 
-                const jsonWriteStream = fs.createWriteStream(logLocation + "json", { flags: "a" });
-                jsonWriteStream.write(logJSONString);
-                jsonWriteStream.end();
+        let txtUnpacked: string = "";
+        let jsonUnpacked: string = "";
 
-                // this.txtWriter = Bun.file(logLocation + "txt", { mode: "a" }).writer({ highWaterMark: 1024 * 128 }); // Auto flush at 128Kb
-                // this.jsonWriter = Bun.file(logLocation + "json", { type: "application/json", mode: "a" }).writer({
-                //     highWaterMark: 1024 * 128,
-                // }); // Auto flush at 128Kb
-            }
+        this.logBuffer.forEach((logItem: Types.LogBufferItem) => {
+            txtUnpacked += logItem.logTXT + "\n";
+            jsonUnpacked += logItem.logJSONString + "\n";
+            this.logBuffer.shift();
+        });
 
-            // Write logs
-            // if (this.storageSettings.txt && this.txtWriter != undefined) this.txtWriter.write(logTxt);
-            // if (this.storageSettings.json && this.jsonWriter != undefined) this.jsonWriter.write(logJSONString);
+        if (this.storageSettings.txt) {
+            const txtWriteStream = fs.createWriteStream(logLocation + "txt.log", { flags: "a" });
+            txtWriteStream.write(txtUnpacked);
+            txtWriteStream.end();
+        }
+
+        if (this.storageSettings.json) {
+            const jsonWriteStream = fs.createWriteStream(logLocation + "json.log", { flags: "a" });
+            jsonWriteStream.write(jsonUnpacked);
+            jsonWriteStream.end();
         }
     }
 
@@ -274,9 +304,7 @@ export class Logger {
 
     // Closing process
     exit() {
-        // if (usingBun) {
-        //     // if (this.txtWriter != undefined) this.txtWriter.end();
-        //     // if (this.jsonWriter != undefined) this.jsonWriter.end();
-        // }
+        // const currentTime = new Date();
+        // this.extractBuffer(currentTime);
     }
 }

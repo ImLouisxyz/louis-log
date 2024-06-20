@@ -48,3 +48,8 @@ export type LogJSON = {
     logMessage: string;
     logData: any;
 };
+
+export type LogBufferItem = {
+    logTXT: string;
+    logJSONString: string;
+};

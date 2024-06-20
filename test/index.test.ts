@@ -6,9 +6,9 @@ const useLogger = mock((logMessage: string) => {
     let stdout = "";
 
     // Override console.log to capture the output
-    // console.log = (message) => {
-    //     stdout += message + "\n";
-    // };
+    console.log = (message) => {
+        stdout += message + "\n";
+    };
 
     // Create a new Logger instance and log a message
     const logger = new Logger("Bun-testing", "log-tests", {});
