@@ -1,7 +1,9 @@
 import chalk from "chalk";
 import dateFormat from "dateformat";
-import * as Types from "./types.ts";
+import * as Types from "./types";
 import * as fs from "node:fs";
+
+import "dotenv/config";
 
 const defaultSettings: Types.LoggerSettings = {
     show: {
@@ -11,7 +13,7 @@ const defaultSettings: Types.LoggerSettings = {
         date: true,
         dateformat: "yyyy-mm-dd HH:MM:ss:l Z",
         level: true,
-        ignoreLevels: ["DEBUG"],
+        ignoreLevels: process.env.ENVIRONMENT != "DEV" ? ["DEBUG"] : [],
     },
     logStorage: {
         path: "./logs",
@@ -20,7 +22,7 @@ const defaultSettings: Types.LoggerSettings = {
         splitBy: "day",
         stratagy: "batch",
         batch: 6,
-        ignoreLevels: ["DEBUG"],
+        ignoreLevels: process.env.ENVIRONMENT != "DEV" ? ["DEBUG"] : [],
     },
     logWebook: {
         enable: false,

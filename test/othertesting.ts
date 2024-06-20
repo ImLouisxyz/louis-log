@@ -17,4 +17,6 @@ Testing.info("This is a normal log message");
 Testing.log("This is also a normal log message");
 Testing.debug("This is a debug message");
 
+Testing.info("This has extra data", { you: "can put anything you like here" });
+
 Testing.exit();
