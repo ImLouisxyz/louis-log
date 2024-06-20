@@ -2,7 +2,7 @@ export type LogStorageSettings = {
     path: string;
     json: boolean;
     txt: boolean;
-    splitBy: "year" | "month" | "day" | "hour" | "minute" | "second";
+    splitBy: "don't split" | "year" | "month" | "day" | "hour" | "minute" | "second";
     stratagy: "single" | "batch";
     batch: number;
     ignoreLevels: LogLevel[];

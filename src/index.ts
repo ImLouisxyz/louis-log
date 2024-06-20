@@ -2,6 +2,7 @@ import chalk from "chalk";
 import dateFormat from "dateformat";
 import * as Types from "./types.ts";
 import { appendFileSync } from "node:fs";
+import { BunFile, FileSink } from "bun";
 
 const defaultSettings: Types.LoggerSettings = {
     show: {
@@ -16,7 +17,7 @@ const defaultSettings: Types.LoggerSettings = {
     },
     logStorage: {
         path: "./logs",
-        json: false,
+        json: true,
         txt: true,
         splitBy: "day",
         stratagy: "single",
@@ -50,6 +51,11 @@ export class Logger {
         INFO: chalk.blue,
         DEBUG: chalk.magenta,
     };
+
+    private oldLogLocation: string = "";
+
+    private txtWriter: undefined | FileSink;
+    private jsonWriter: undefined | FileSink;
 
     constructor(mainProcess: string, subProcess: string, userSettings: Partial<Types.CustomLoggerSettings> = {}) {
         this.mainProcess = mainProcess;
@@ -89,11 +95,13 @@ export class Logger {
         const logMessageString = this.handleLogDatatype(logMessage);
         const logDataString = this.handleLogDatatype(logData);
 
+        const txtLog = this.formTxtLog(formattedDate, logMessageString, logLevel, logDataString);
+
         if (this.formatSettings.stdoutEnable && !this.formatSettings.ignoreLevels.includes(logLevel))
-            this.logToStdout(formattedDate, logMessageString, logLevel, logDataString);
+            console.log(this.colours[logLevel](txtLog));
     }
 
-    private logToStdout(formattedDate: string, logMessage: string, logLevel: string, logDataString: string) {
+    private formTxtLog(formattedDate: string, logMessage: string, logLevel: string, logDataString: string): string {
         let outMessage = "";
         outMessage += this.formatSettings.date ? `[${formattedDate}] ` : "";
 
@@ -113,7 +121,7 @@ export class Logger {
 
         outMessage += logDataString != "" ? "\nLog Data:\n" + logDataString : "";
 
-        console.log(this.colours[logLevel](outMessage));
+        return outMessage;
     }
 
     private logToFile(
@@ -148,12 +156,52 @@ export class Logger {
         let logLocation = this.storageSettings.path;
 
         switch (this.storageSettings.splitBy) {
+            case "don't split":
+                logLocation += "logs.";
+                break;
             case "year":
-                logLocation += `/${currentTime.getFullYear()}/logs.`;
+                logLocation += `/${currentTime.getFullYear()}.`;
                 break;
             case "month":
-                logLocation += `/${currentTime.getFullYear()}/${currentTime.getMonth()}/logs.`;
+                logLocation += `/${currentTime.getFullYear()}/${currentTime.getMonth()}.`;
                 break;
+            case "day":
+                logLocation += `/${currentTime.getFullYear()}/${currentTime.getMonth()}/${currentTime.getDate}.`;
+                break;
+            case "hour":
+                logLocation += `/${currentTime.getFullYear()}/${currentTime.getMonth()}/${
+                    currentTime.getDate
+                }/${currentTime.getHours()}.`;
+                break;
+            case "minute":
+                logLocation += `/${currentTime.getFullYear()}/${currentTime.getMonth()}/${
+                    currentTime.getDate
+                }/${currentTime.getHours()}/${currentTime.getMinutes()}.`;
+                break;
+            case "second":
+                logLocation += `/${currentTime.getFullYear()}/${currentTime.getMonth()}/${
+                    currentTime.getDate
+                }/${currentTime.getHours()}/${currentTime.getMinutes()}.`;
+                break;
+            default:
+                this.error("Logger split by value is invalid", this.storageSettings.splitBy);
+                break;
+        }
+
+        if (this.storageSettings.stratagy == "batch" && this.storageSettings.batch > 1) {
+            // Update Log Location
+            if (this.oldLogLocation != logLocation) {
+                if (this.txtWriter != undefined) this.txtWriter.end();
+                if (this.jsonWriter != undefined) this.jsonWriter.end();
+
+                this.txtWriter = Bun.file(logLocation).writer({ highWaterMark: 1024 * 128 }); // Auto flush at 128Kb
+                this.jsonWriter = Bun.file(logLocation, { type: "application/json" }).writer({
+                    highWaterMark: 1024 * 128,
+                }); // Auto flush at 128Kb
+            }
+
+            // Write logs
+            // if (this.storageSettings.txt && this.txtWriter != undefined) this.txtWriter.write();
         }
     }
 
@@ -207,5 +255,13 @@ export class Logger {
 
     debug(message: string, data?: any) {
         this.sendLog("DEBUG", message, data);
+    }
+
+    // Closing process
+    exit() {
+        if (usingBun) {
+            if (this.txtWriter != undefined) this.txtWriter.end();
+            if (this.jsonWriter != undefined) this.jsonWriter.end();
+        }
     }
 }
