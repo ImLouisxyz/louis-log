@@ -2,6 +2,8 @@
 
 Customisable JSON logging solution
 
+# ! CHANGE BRANCH TO STABLE IF YOU WANT TO USE A VERSION WHICH WORKS !
+
 ## Features
 
 -   Informative logging in stdout
