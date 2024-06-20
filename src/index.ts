@@ -44,6 +44,7 @@ export default class Logger {
     // TODO add colour theme changing support
     private colours: { [key: string]: Function } = {
         FATAL: chalk.bgRedBright,
+        FATALRATE: chalk.bgRedBright,
         ERROR: chalk.red,
         WARN: chalk.yellow,
         SUCCESS: chalk.green,
@@ -52,6 +53,7 @@ export default class Logger {
     };
 
     private logBuffer: Types.LogBufferItem[] = [];
+    private webhookBuffer: Types.webhookBufferItem[] = [];
 
     /**
      * Creates a new Logger
@@ -157,39 +159,51 @@ export default class Logger {
         logDataString: string,
         logTxt: string,
     ) {
-        if (logLevel == "FATAL-RATE") return; // ! Very important. This prevents a discord error due to rate limiting from sending another message and further rate limiting.
+        if (logLevel == "FATALRATE") return; // ! Very important. This prevents a discord error due to rate limiting from sending another message and further rate limiting.
         if (this.webhookSettings.url == undefined) return;
         if (this.webhookSettings.form != "discord") {
             this.error("Currently only discord webhooks have been implemented");
             return;
         }
 
-        fetch(this.webhookSettings.url, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                username: `${this.mainProcess}.${this.subProcess}`,
-                content: null,
-                embeds: [
-                    {
-                        title: `[${logLevel}] ${logMessageString}`,
-                        description: `${logDataString}`,
-                        color: null,
-                        timestamp: currentTime,
-                    },
-                ],
-                attachments: [],
-            }),
-        })
-            .then((res) => {
-                if (res.status != 204)
-                    this.fatalRate("Unexpected response from webhook", { status: res.status, message: res.statusText });
+        let newEmbed: Types.webhookBufferItem = {
+            title: `<${this.mainProcess}.${this.subProcess}> [${logLevel}] ${logMessageString}`,
+            description: logDataString != "" ? `\`\`\`json\n${logDataString}\n\`\`\`` : "",
+            color: null,
+            timestamp: currentTime,
+        };
+
+        this.webhookBuffer.push(newEmbed);
+
+        if (this.webhookBuffer.length > 10) {
+            this.fatalRate("Webhook Buffer too large to send in one message!");
+            this.webhookBuffer = []; // clear buffer :o
+        }
+        if (this.webhookBuffer.length == 10) {
+            fetch(this.webhookSettings.url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    username: `${this.mainProcess}.${this.subProcess}`,
+                    content: null,
+                    embeds: this.webhookBuffer,
+                    attachments: [],
+                }),
             })
-            .catch((err) => {
-                this.fatalRate("Webhook failed to send", { error: err });
-            });
+                .then((res) => {
+                    if (res.status != 204)
+                        this.fatalRate("Unexpected response from webhook", {
+                            status: res.status,
+                            message: res.statusText,
+                        });
+                })
+                .catch((err) => {
+                    this.fatalRate("Webhook failed to send", { error: err });
+                });
+            this.webhookBuffer = []; // clear buffer
+        }
     }
     private formTxtLog(formattedDate: string, logMessage: string, logLevel: string, logDataString: string): string {
         let outMessage = "";
@@ -377,7 +391,7 @@ export default class Logger {
     }
 
     private fatalRate(message: any, data?: any) {
-        this.sendLog("FATAL-RATE", message, data);
+        this.sendLog("FATALRATE", message, data);
     }
 
     error(message: any, data?: any) {
@@ -415,9 +429,39 @@ export default class Logger {
             try {
                 const currentTime = new Date();
                 this.extractBuffer(currentTime);
+            } catch (error) {
+                console.error("There was an issue clearing the log buffer", error);
+            }
+        }
+        if (this.webhookSettings.url != undefined) {
+            try {
+                fetch(this.webhookSettings.url, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        username: `${this.mainProcess}.${this.subProcess}`,
+                        content: null,
+                        embeds: this.webhookBuffer,
+                        attachments: [],
+                    }),
+                })
+                    .then((res) => {
+                        if (res.status != 204)
+                            this.fatalRate("Unexpected response from webhook", {
+                                status: res.status,
+                                message: res.statusText,
+                            });
+                    })
+                    .catch((err) => {
+                        this.fatalRate("Webhook failed to send", { error: err });
+                    });
+                this.webhookBuffer = []; // clear buffer
+
                 console.log("ready to shutdown");
             } catch (error) {
-                console.error("There was an issue clearing the buffer", error);
+                console.error("There was an issue clearing the webhook buffer");
             }
         }
     }

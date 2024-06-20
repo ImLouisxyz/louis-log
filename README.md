@@ -2,8 +2,6 @@
 
 Customisable JSON logging solution
 
-# ! CHANGE BRANCH TO STABLE IF YOU WANT TO USE A VERSION WHICH WORKS !
-
 ## Features
 
 -   Informative logging in stdout
@@ -38,5 +36,5 @@ JSON log example:
 
 ## Future Plans
 
--   Webhook integration
 -   Customisable colour themes
+-   Log colours on webhook embeds :o

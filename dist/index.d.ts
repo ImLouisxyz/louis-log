@@ -11,7 +11,7 @@ export type LogStorageSettings = {
 };
 export type LogWebhookSettings = {
 	enable: boolean;
-	url?: URL;
+	url: URL | undefined;
 	form?: "" | "discord";
 };
 export type LogFormatSettings = {
@@ -28,7 +28,7 @@ export type CustomLoggerSettings = {
 	logWebook: Partial<LogWebhookSettings>;
 	show: Partial<LogFormatSettings>;
 };
-export type LogLevel = "FATAL" | "FATAL-RATE" | "ERROR" | "WARN" | "SUCCESS" | "INFO" | "DEBUG";
+export type LogLevel = "FATAL" | "FATALRATE" | "ERROR" | "WARN" | "SUCCESS" | "INFO" | "DEBUG";
 export default class Logger {
 	private formatSettings;
 	private storageSettings;
@@ -37,6 +37,7 @@ export default class Logger {
 	subProcess: string;
 	private colours;
 	private logBuffer;
+	private webhookBuffer;
 	/**
 	 * Creates a new Logger
 	 * @param {string} mainProcess - The name of the main process
