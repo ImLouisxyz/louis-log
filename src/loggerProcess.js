@@ -17,5 +17,7 @@ process.on("message", (message) => {
     }
 });
 
-console.log("Exiting logger Process");
-process.exit(0);
+setTimeout(() => {
+    console.log("Exiting logger Process");
+    process.exit(0);
+}, 10000);

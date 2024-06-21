@@ -36,10 +36,11 @@ const defaultSettings: Types.LoggerSettings = {
     },
 };
 console.log("Testing");
-const loggerProcess = fork(path.join(import.meta.dir, "loggerProcess.ts"), [], {
+const loggerProcess = fork(path.join(__dirname, "./loggerProcess.js"), [], {
     detached: true,
     stdio: "inherit",
 });
+console.log(loggerProcess);
 loggerProcess.unref();
 console.log("logger process initilised....");
 function sendLogToLoggerProcess(
