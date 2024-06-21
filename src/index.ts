@@ -200,6 +200,18 @@ export default class Logger {
             this.webhookBuffer = []; // clear buffer :o
         }
         if (this.webhookBuffer.length == 10) {
+            this.debug("req:", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    username: `${this.mainProcess}.${this.subProcess}`,
+                    content: "testing2",
+                    embeds: this.webhookBuffer,
+                    attachments: [],
+                }),
+            });
             fetch(this.webhookSettings.url, {
                 method: "POST",
                 headers: {
@@ -207,7 +219,7 @@ export default class Logger {
                 },
                 body: JSON.stringify({
                     username: `${this.mainProcess}.${this.subProcess}`,
-                    content: null,
+                    content: "testing1",
                     embeds: this.webhookBuffer,
                     attachments: [],
                 }),
@@ -218,6 +230,7 @@ export default class Logger {
                             status: res.status,
                             message: res.statusText,
                         });
+                    this.webhookBuffer = []; // clear buffer
                 })
                 .catch((err) => {
                     this.fatalRate("Webhook failed to send", { error: err });
@@ -455,8 +468,21 @@ export default class Logger {
                 console.error("There was an issue clearing the log buffer", error);
             }
         }
-        if (this.webhookSettings.url != undefined) {
+        if (this.webhookSettings.url != undefined && this.webhookBuffer.length > 0) {
             console.log("Sending last discord message", this.webhookBuffer);
+            this.debug("req:", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    username: `${this.mainProcess}.${this.subProcess}`,
+                    content: "testing",
+                    embeds: this.webhookBuffer,
+                    attachments: [],
+                }),
+            });
+
             try {
                 await fetch(this.webhookSettings.url, {
                     method: "POST",
@@ -465,7 +491,7 @@ export default class Logger {
                     },
                     body: JSON.stringify({
                         username: `${this.mainProcess}.${this.subProcess}`,
-                        content: null,
+                        content: "testing",
                         embeds: this.webhookBuffer,
                         attachments: [],
                     }),
