@@ -9,7 +9,6 @@ import { v4 as uuidv4 } from "uuid";
 import { fork } from "child_process";
 
 import "dotenv/config";
-import { main } from "bun";
 
 const defaultSettings: Types.LoggerSettings = {
     show: {
@@ -36,8 +35,13 @@ const defaultSettings: Types.LoggerSettings = {
         form: "",
     },
 };
-
-const loggerProcess = fork(path.join(import.meta.dir, "loggerProcess.js"));
+console.log("Testing");
+const loggerProcess = fork(path.join(import.meta.dir, "loggerProcess.ts"), [], {
+    detached: true,
+    stdio: "inherit",
+});
+loggerProcess.unref();
+console.log("logger process initilised....");
 function sendLogToLoggerProcess(
     id: string,
     currentTime: Date,
