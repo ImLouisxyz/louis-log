@@ -3,8 +3,13 @@ import dateFormat from "dateformat";
 import * as Types from "./types";
 import * as fs from "node:fs";
 import fetch from "node-fetch";
+import path from "path";
+import { v4 as uuidv4 } from "uuid";
+
+import { fork } from "child_process";
 
 import "dotenv/config";
+import { main } from "bun";
 
 const defaultSettings: Types.LoggerSettings = {
     show: {
@@ -32,6 +37,48 @@ const defaultSettings: Types.LoggerSettings = {
     },
 };
 
+const loggerProcess = fork(path.join(import.meta.dir, "loggerProcess.js"));
+function sendLogToLoggerProcess(
+    id: string,
+    currentTime: Date,
+    formattedDate: string,
+    logMessageString: string,
+    logLevel: Types.LogLevel,
+    logDataString: string,
+    txtLog: string,
+) {
+    let sendJson: Types.CompleteLog = {
+        id: id,
+        currentTime: currentTime,
+        formattedDate: formattedDate,
+        logMessageString: logMessageString,
+        logLevel: logLevel,
+        logDataString: logDataString,
+        txtLog: txtLog,
+    };
+
+    loggerProcess.send({ type: "log", data: sendJson });
+}
+function sendSettingsToLoggerProcess(
+    id: string,
+    mainProcess: string,
+    subProcess: string,
+    formatSettings: Types.LogFormatSettings,
+    storageSettings: Types.LogStorageSettings,
+    webhookSettings: Types.LogWebhookSettings,
+) {
+    let sendJson: Types.TransferSettings = {
+        id: id,
+        mainProcess: mainProcess,
+        subProcess: subProcess,
+        formatSettings: formatSettings,
+        storageSettings: storageSettings,
+        webhookSettings: webhookSettings,
+    };
+
+    loggerProcess.send({ type: "settings", data: sendJson });
+}
+
 export default class Logger {
     private formatSettings!: Types.LogFormatSettings;
     private storageSettings!: Types.LogStorageSettings;
@@ -39,6 +86,7 @@ export default class Logger {
 
     public mainProcess!: string;
     public subProcess!: string;
+    public processID!: string;
 
     // * Might need to add more types for logMessage
     // TODO add colour theme changing support
@@ -53,7 +101,7 @@ export default class Logger {
     };
 
     private logBuffer: Types.LogBufferItem[] = [];
-    private webhookBuffer: Types.webhookBufferItem[] = [];
+    private webhookBuffer: Types.WebhookBufferItem[] = [];
 
     /**
      * Creates a new Logger
@@ -79,8 +127,9 @@ export default class Logger {
         try {
             this.mainProcess = mainProcess;
             this.subProcess = subProcess;
+            this.processID = uuidv4();
         } catch (error) {
-            console.error("There was an issue with initialising process names");
+            console.error("There was an issue with initialising process names", error);
             process.exit(1);
         }
 
@@ -91,7 +140,7 @@ export default class Logger {
                 ...userSettings.show,
             };
         } catch (error) {
-            console.error("There was an issue with initialising settings: format Settings", userSettings.show);
+            console.error("There was an issue with initialising settings: format Settings", userSettings.show, error);
             process.exit(1);
         }
 
@@ -101,7 +150,11 @@ export default class Logger {
                 ...userSettings.logStorage,
             };
         } catch (error) {
-            console.error("There was an issue with initialising settings: storage Settings", userSettings.logStorage);
+            console.error(
+                "There was an issue with initialising settings: storage Settings",
+                userSettings.logStorage,
+                error,
+            );
             process.exit(1);
         }
 
@@ -111,8 +164,25 @@ export default class Logger {
                 ...userSettings.logWebook,
             };
         } catch (error) {
-            console.error("There was an issue with initialising settings: webhook Settings", userSettings.logWebook);
+            console.error(
+                "There was an issue with initialising settings: webhook Settings",
+                userSettings.logWebook,
+                error,
+            );
             process.exit(1);
+        }
+
+        try {
+            sendSettingsToLoggerProcess(
+                this.processID,
+                this.mainProcess,
+                this.subProcess,
+                this.formatSettings,
+                this.storageSettings,
+                this.webhookSettings,
+            );
+        } catch (error) {
+            console.error("There was an issue with transferring logger settings to the logger process", error);
         }
 
         // Finished initialising
@@ -140,13 +210,28 @@ export default class Logger {
                 console.log(this.colours[logLevel](txtLog));
 
             if (
+                this.webhookSettings.enable ||
+                ((this.storageSettings.json || this.storageSettings.txt) &&
+                    !this.storageSettings.ignoreLevels.includes(logLevel))
+            )
+                sendLogToLoggerProcess(
+                    this.processID,
+                    currentTime,
+                    formattedDate,
+                    logMessageString,
+                    logLevel,
+                    logDataString,
+                    txtLog,
+                );
+
+            if (
                 (this.storageSettings.json || this.storageSettings.txt) &&
                 !this.storageSettings.ignoreLevels.includes(logLevel)
             )
-                this.logToFile(currentTime, formattedDate, logMessageString, logLevel, logDataString, txtLog);
+                if (this.webhookSettings.enable)
+                    // this.logToFile();
 
-            if (this.webhookSettings.enable)
-                this.sendWebhook(currentTime, formattedDate, logMessageString, logLevel, logDataString, txtLog);
+                    this.sendWebhook(currentTime, formattedDate, logMessageString, logLevel, logDataString, txtLog);
         } catch (error) {
             console.error("There was an issue logging data", error);
         }
@@ -155,7 +240,7 @@ export default class Logger {
         currentTime: Date,
         formattedDate: string,
         logMessageString: string,
-        logLevel: string,
+        logLevel: Types.LogLevel,
         logDataString: string,
         logTxt: string,
     ) {
@@ -166,7 +251,7 @@ export default class Logger {
             return;
         }
 
-        let newEmbed: Types.webhookBufferItem = {
+        let newEmbed: Types.WebhookBufferItem = {
             title: `<${this.mainProcess}.${this.subProcess}> [${logLevel}] ${logMessageString}`,
             description: logDataString != "" ? `\`\`\`json\n${logDataString}\n\`\`\`` : "",
             color: null,

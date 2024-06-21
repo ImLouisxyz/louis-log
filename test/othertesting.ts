@@ -1,4 +1,4 @@
-import Logger from "../src/index.ts";
+import Logger from "../dist/index.js";
 
 const Testing = new Logger("Testing", "testing even more", {
     logWebook: { enable: true, url: new URL(process.env.DISCORD_URL!), form: "discord" },
