@@ -2,8 +2,6 @@
 
 Customisable JSON logging solution
 
-# ! THIS IS THE DEVELOPMENT BRANCH DO NOT USE THIS IN YOUR APPLICATION, IT IS LIKELY BROKEN / MID FEATURE !
-
 ## Features
 
 -   Informative logging in stdout
@@ -11,7 +9,7 @@ Customisable JSON logging solution
 -   Automatic log file splitting by date
 -   Logs stdout logs and JSON style logs
 -   Webhook Integrations
--   Spawns a child process to ensure all logs are handled
+-   Handles quitting to ensure all logs are sent before closing / having an error
 
 Txt log example:
 
