@@ -72,8 +72,6 @@ export default class Logger {
         logger.info("This is a normal log message");
         logger.log("This is also a normal log message");
         logger.debug("This is a debug message");
-
-        logger.exit(); // Make sure to call this if using batch mode to save any logs in memory
     */
     constructor(mainProcess: string, subProcess: string, userSettings: Partial<Types.CustomLoggerSettings> = {}) {
         // Process tags
@@ -464,7 +462,10 @@ export default class Logger {
     // Closing process
 
     /**
-     * Make sure to call this before exiting your program if using batch mode if you want your logs to save.
+     * Forces a cleanup and exit, use wisely.
+     * Automatically called on exit or uncaught exception.
+     *
+     * Ensures that all logs in memory are dealt with before closing.
      */
     async exit(reason?: string) {
         console.log("Shutting down gracefully with reason: ", reason);
