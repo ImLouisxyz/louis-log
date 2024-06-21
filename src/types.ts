@@ -59,22 +59,3 @@ export type WebhookBufferItem = {
     color: null;
     timestamp: Date;
 };
-
-export type CompleteLog = {
-    id: string;
-    currentTime: Date;
-    formattedDate: string;
-    logMessageString: string;
-    logLevel: LogLevel;
-    logDataString: string;
-    txtLog: string;
-};
-
-export type TransferSettings = {
-    id: string;
-    mainProcess: string;
-    subProcess: string;
-    formatSettings: LogFormatSettings;
-    storageSettings: LogStorageSettings;
-    webhookSettings: LogWebhookSettings;
-};

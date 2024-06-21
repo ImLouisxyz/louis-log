@@ -3,10 +3,6 @@ import dateFormat from "dateformat";
 import * as Types from "./types";
 import * as fs from "node:fs";
 import fetch from "node-fetch";
-import path from "path";
-import { v4 as uuidv4 } from "uuid";
-
-import { fork } from "child_process";
 
 import "dotenv/config";
 
@@ -35,54 +31,6 @@ const defaultSettings: Types.LoggerSettings = {
         form: "",
     },
 };
-console.log("Testing");
-const loggerProcess = fork(path.join(__dirname, "./loggerProcess.js"), [], {
-    detached: true,
-    stdio: "inherit",
-});
-console.log(loggerProcess);
-loggerProcess.unref();
-console.log("logger process initilised....");
-function sendLogToLoggerProcess(
-    id: string,
-    currentTime: Date,
-    formattedDate: string,
-    logMessageString: string,
-    logLevel: Types.LogLevel,
-    logDataString: string,
-    txtLog: string,
-) {
-    let sendJson: Types.CompleteLog = {
-        id: id,
-        currentTime: currentTime,
-        formattedDate: formattedDate,
-        logMessageString: logMessageString,
-        logLevel: logLevel,
-        logDataString: logDataString,
-        txtLog: txtLog,
-    };
-
-    loggerProcess.send({ type: "log", data: sendJson });
-}
-function sendSettingsToLoggerProcess(
-    id: string,
-    mainProcess: string,
-    subProcess: string,
-    formatSettings: Types.LogFormatSettings,
-    storageSettings: Types.LogStorageSettings,
-    webhookSettings: Types.LogWebhookSettings,
-) {
-    let sendJson: Types.TransferSettings = {
-        id: id,
-        mainProcess: mainProcess,
-        subProcess: subProcess,
-        formatSettings: formatSettings,
-        storageSettings: storageSettings,
-        webhookSettings: webhookSettings,
-    };
-
-    loggerProcess.send({ type: "settings", data: sendJson });
-}
 
 export default class Logger {
     private formatSettings!: Types.LogFormatSettings;
@@ -132,7 +80,6 @@ export default class Logger {
         try {
             this.mainProcess = mainProcess;
             this.subProcess = subProcess;
-            this.processID = uuidv4();
         } catch (error) {
             console.error("There was an issue with initialising process names", error);
             process.exit(1);
@@ -177,19 +124,6 @@ export default class Logger {
             process.exit(1);
         }
 
-        try {
-            sendSettingsToLoggerProcess(
-                this.processID,
-                this.mainProcess,
-                this.subProcess,
-                this.formatSettings,
-                this.storageSettings,
-                this.webhookSettings,
-            );
-        } catch (error) {
-            console.error("There was an issue with transferring logger settings to the logger process", error);
-        }
-
         // Finished initialising
         try {
             this.success(`Initialised Logger`);
@@ -201,6 +135,17 @@ export default class Logger {
             console.error("There was an issue with logging settings");
             process.exit(1);
         }
+
+        try {
+            process.on("beforeExit", () => this.exit("Before exit"));
+            process.on("exit", () => this.exit("Process exit"));
+            process.on("SIGINT", () => this.exit("SIGINT"));
+            process.on("SIGTERM", () => this.exit("SIGTERM"));
+            process.on("uncaughtException", async (err) => {
+                console.error("Uncaught exception:", err);
+                await this.exit("uncaughtException");
+            });
+        } catch (error) {}
     }
     private sendLog(logLevel: Types.LogLevel, logMessage: any, logData: any) {
         try {
@@ -215,28 +160,13 @@ export default class Logger {
                 console.log(this.colours[logLevel](txtLog));
 
             if (
-                this.webhookSettings.enable ||
-                ((this.storageSettings.json || this.storageSettings.txt) &&
-                    !this.storageSettings.ignoreLevels.includes(logLevel))
-            )
-                sendLogToLoggerProcess(
-                    this.processID,
-                    currentTime,
-                    formattedDate,
-                    logMessageString,
-                    logLevel,
-                    logDataString,
-                    txtLog,
-                );
-
-            if (
                 (this.storageSettings.json || this.storageSettings.txt) &&
                 !this.storageSettings.ignoreLevels.includes(logLevel)
             )
-                if (this.webhookSettings.enable)
-                    // this.logToFile();
+                this.logToFile(currentTime, formattedDate, logMessageString, logLevel, logDataString, txtLog);
 
-                    this.sendWebhook(currentTime, formattedDate, logMessageString, logLevel, logDataString, txtLog);
+            if (this.webhookSettings.enable)
+                this.sendWebhook(currentTime, formattedDate, logMessageString, logLevel, logDataString, txtLog);
         } catch (error) {
             console.error("There was an issue logging data", error);
         }
@@ -514,8 +444,10 @@ export default class Logger {
     /**
      * Make sure to call this before exiting your program if using batch mode if you want your logs to save.
      */
-    exit() {
+    async exit(reason?: string) {
+        console.log("Shutting down gracefully with reason: ", reason);
         if (this.storageSettings.stratagy == "batch") {
+            console.log("Clearing file buffer", this.logBuffer);
             try {
                 const currentTime = new Date();
                 this.extractBuffer(currentTime);
@@ -524,8 +456,9 @@ export default class Logger {
             }
         }
         if (this.webhookSettings.url != undefined) {
+            console.log("Sending last discord message", this.webhookBuffer);
             try {
-                fetch(this.webhookSettings.url, {
+                await fetch(this.webhookSettings.url, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -538,21 +471,26 @@ export default class Logger {
                     }),
                 })
                     .then((res) => {
-                        if (res.status != 204)
-                            this.fatalRate("Unexpected response from webhook", {
-                                status: res.status,
-                                message: res.statusText,
-                            });
+                        console.log(res);
+                        if (res.status != 204) console.error("Unexpected response from webhook");
+                        this.fatalRate("Unexpected response from webhook", {
+                            status: res.status,
+                            message: res.statusText,
+                        });
+                        this.webhookBuffer = []; // clear buffer
+
+                        console.log("ready to shutdown");
                     })
                     .catch((err) => {
+                        console.error("Webhook failed to send", { error: err });
                         this.fatalRate("Webhook failed to send", { error: err });
                     });
-                this.webhookBuffer = []; // clear buffer
-
-                console.log("ready to shutdown");
             } catch (error) {
                 console.error("There was an issue clearing the webhook buffer");
             }
         }
+        setTimeout(() => {
+            process.exit();
+        }, 500);
     }
 }

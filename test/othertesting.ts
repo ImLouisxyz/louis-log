@@ -21,4 +21,13 @@ Testing.debug("This is a debug message");
 
 Testing.info("This has extra data", { you: "can put anything you like here" });
 
-Testing.exit();
+let count = 0;
+let id = setInterval(() => {
+    Testing.info("Hello", count);
+    count++;
+    if (count > 10) clearInterval(id);
+}, 500);
+
+// setTimeout(() => {
+//     throw new Error("Simulated crash");
+// }, 4000);
