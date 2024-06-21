@@ -57,5 +57,5 @@ export type WebhookBufferItem = {
     title: string;
     description: string;
     color: null;
-    timestamp: Date;
+    footer: { text: string };
 };

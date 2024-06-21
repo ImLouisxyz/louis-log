@@ -188,30 +188,39 @@ export default class Logger {
 
         let newEmbed: Types.WebhookBufferItem = {
             title: `<${this.mainProcess}.${this.subProcess}> [${logLevel}] ${logMessageString}`,
-            description: logDataString != "" ? `\`\`\`json\n${logDataString}\n\`\`\`` : "",
+            description:
+                logDataString != ""
+                    ? `\`\`\`json\n${
+                          logDataString.length > 4000
+                              ? "The data provided is too long for an embed. Check file based or stdout based logs."
+                              : logDataString
+                      }\n\`\`\``
+                    : "",
             color: null,
-            timestamp: currentTime,
+            footer: { text: formattedDate },
         };
 
         this.webhookBuffer.push(newEmbed);
 
-        if (this.webhookBuffer.length > 10) {
-            this.fatalRate("Webhook Buffer too large to send in one message!");
+        if (this.webhookBuffer.length > 8) {
+            this.fatalRate("Webhook Buffer too large to send in one message!", this.webhookBuffer.length);
             this.webhookBuffer = []; // clear buffer :o
+            // console.log(this.webhookBuffer); // * DEBUG LOG
+            return;
         }
-        if (this.webhookBuffer.length == 10) {
-            this.debug("req:", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    username: `${this.mainProcess}.${this.subProcess}`,
-                    content: "testing2",
-                    embeds: this.webhookBuffer,
-                    attachments: [],
-                }),
-            });
+        if (this.webhookBuffer.length == 8) {
+            // console.log("req:", {
+            //     method: "POST",
+            //     headers: {
+            //         "Content-Type": "application/json",
+            //     },
+            //     body: JSON.stringify({
+            //         username: `${this.mainProcess}.${this.subProcess}`,
+            //         content: null,
+            //         embeds: this.webhookBuffer,
+            //         attachments: [],
+            //     }),
+            // }); // * DEBUG LOG
             fetch(this.webhookSettings.url, {
                 method: "POST",
                 headers: {
@@ -219,7 +228,7 @@ export default class Logger {
                 },
                 body: JSON.stringify({
                     username: `${this.mainProcess}.${this.subProcess}`,
-                    content: "testing1",
+                    content: null,
                     embeds: this.webhookBuffer,
                     attachments: [],
                 }),
@@ -460,7 +469,7 @@ export default class Logger {
     async exit(reason?: string) {
         console.log("Shutting down gracefully with reason: ", reason);
         if (this.storageSettings.stratagy == "batch") {
-            console.log("Clearing file buffer", this.logBuffer);
+            console.log("Clearing file buffer, length:", this.logBuffer.length);
             try {
                 const currentTime = new Date();
                 this.extractBuffer(currentTime);
@@ -469,19 +478,19 @@ export default class Logger {
             }
         }
         if (this.webhookSettings.url != undefined && this.webhookBuffer.length > 0) {
-            console.log("Sending last discord message", this.webhookBuffer);
-            this.debug("req:", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    username: `${this.mainProcess}.${this.subProcess}`,
-                    content: "testing",
-                    embeds: this.webhookBuffer,
-                    attachments: [],
-                }),
-            });
+            console.log("Sending last discord message, length: ", this.webhookBuffer.length);
+            // console.error("req:", {
+            //     method: "POST",
+            //     headers: {
+            //         "Content-Type": "application/json",
+            //     },
+            //     body: JSON.stringify({
+            //         username: `${this.mainProcess}.${this.subProcess}`,
+            //         content: null,
+            //         embeds: this.webhookBuffer,
+            //         attachments: [],
+            //     }),
+            // }); //  * DEBUG LOG
 
             try {
                 await fetch(this.webhookSettings.url, {
@@ -491,25 +500,25 @@ export default class Logger {
                     },
                     body: JSON.stringify({
                         username: `${this.mainProcess}.${this.subProcess}`,
-                        content: "testing",
+                        content: null,
                         embeds: this.webhookBuffer,
                         attachments: [],
                     }),
                 })
                     .then((res) => {
-                        console.log(res);
-                        if (res.status != 204) console.error("Unexpected response from webhook");
-                        this.fatalRate("Unexpected response from webhook", {
-                            status: res.status,
-                            message: res.statusText,
-                        });
+                        if (res.status != 204) {
+                            console.error("Unexpected response from webhook", {
+                                status: res.status,
+                                message: res.statusText,
+                            });
+                        }
+
                         this.webhookBuffer = []; // clear buffer
 
                         console.log("ready to shutdown");
                     })
                     .catch((err) => {
                         console.error("Webhook failed to send", { error: err });
-                        this.fatalRate("Webhook failed to send", { error: err });
                     });
             } catch (error) {
                 console.error("There was an issue clearing the webhook buffer");

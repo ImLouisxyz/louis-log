@@ -35,6 +35,7 @@ export default class Logger {
 	private webhookSettings;
 	mainProcess: string;
 	subProcess: string;
+	processID: string;
 	private colours;
 	private logBuffer;
 	private webhookBuffer;
@@ -77,7 +78,7 @@ export default class Logger {
 	/**
 	 * Make sure to call this before exiting your program if using batch mode if you want your logs to save.
 	 */
-	exit(): void;
+	exit(reason?: string): Promise<void>;
 }
 
 export {};
